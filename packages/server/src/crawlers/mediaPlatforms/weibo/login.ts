@@ -122,4 +122,29 @@ export class WeiboLogin implements BaseLogin {
         await this.browserContext.addCookies(cookiesToAdd);
         logger.info('[WeiboLogin.login_by_cookies] Cookies set successfully.');
     }
+    // public async loginByCookies(): Promise<void> {
+    //     logger.info('[WeiboLogin.login_by_cookies] Begin login weibo by cookie ...');
+    
+    //     if (!this.cookieStr || this.cookieStr.trim().length === 0) {
+    //         // 如果 cookieStr 为空，则不设置 Cookie，直接返回
+    //         logger.info('[WeiboLogin.login_by_cookies] No cookies provided, skipping cookie login to test guest mode.');
+    //         return;
+    //     }
+    
+    //     // 转换 Cookie 字符串为字典
+    //     const cookieDict = convertStrCookieToDict(this.cookieStr);
+    //     const cookiesToAdd = Object.entries(cookieDict).map(([key, value]) => {
+    //         return {
+    //             name: key,
+    //             value: value,
+    //             domain: '.weibo.cn',
+    //             path: '/',
+    //         };
+    //     });
+    
+    //     // 将 Cookie 添加到浏览器上下文
+    //     await this.browserContext.addCookies(cookiesToAdd);
+    //     logger.info('[WeiboLogin.login_by_cookies] Cookies set successfully.');
+    // }
+    
 }
