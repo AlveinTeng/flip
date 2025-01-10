@@ -9,7 +9,7 @@ import { get_search_id, sign } from './help.js';
 import { extractUrlParamsToDict } from '../../../utils/crawlers/crawler_util.js';
 import { logger } from '../../../utils/crawlers/logger.js';
 
-interface XiaoHongShuClientOptions {
+interface xhsClientOptions {
     timeout?: number;
     proxies?: any;
     headers: Record<string, string>;
@@ -17,7 +17,7 @@ interface XiaoHongShuClientOptions {
     cookieDict: Record<string, string>;
 }
 
-export class XiaoHongShuClient implements BaseApiClient {
+export class xhsClient implements BaseApiClient {
     private proxies: any;
     private timeout: number;
     private headers: Record<string, string>;
@@ -31,7 +31,7 @@ export class XiaoHongShuClient implements BaseApiClient {
     private NOTE_ABNORMAL_STR: string = "笔记状态异常，请稍后查看";
     private NOTE_ABNORMAL_CODE: number = -510001;
 
-    constructor(opts: XiaoHongShuClientOptions) {
+    constructor(opts: xhsClientOptions) {
         this.proxies = opts.proxies;
         this.timeout = opts.timeout ?? 10;
         this.headers = opts.headers;
