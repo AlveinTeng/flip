@@ -1,24 +1,19 @@
-// src/crawlers/mediaPlatforms/xiaohongshu/index.ts
+// 省略文件开头的 License 声明等内容
+// 假设已安装 p-limit：npm install p-limit
 
-/**
- * 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
- * 1. 不得用于任何商业用途。
- * 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
- * 3. 不得进行大规模爬取或对平台造成运营干扰。
- * 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
- * 5. 不得用于任何非法或不当的用途。
- *
- * 详细许可条款请参阅项目根目录下的LICENSE文件。
- * 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
- */
-
+import pLimit from 'p-limit'; // 用于并发控制
 import { Browser, BrowserContext, Page, chromium } from 'playwright';
 import { logger } from '../../../utils/crawlers/logger.js';
-import { xhsLogin } from '../../../crawlers/mediaPlatforms/xhs/login.js'; // 假设你已经实现了 XiaoHongShuLogin 类
-import { xhsClient } from '../../../crawlers/mediaPlatforms/xhs/client.js'; // 你的 XiaoHongShuClient 类
+import { xhsLogin } from '../../../crawlers/mediaPlatforms/xhs/login.js'; 
+import { xhsClient } from '../../../crawlers/mediaPlatforms/xhs/client.js'; 
 import { DataFetchError, IPBlockError } from '../../../exceptions/crawler.js';
+import { fileURLToPath } from 'url';
+// import { log } from 'console';
+import * as path from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export class xhsService{
+export class xhsService {
     private browser: Browser | null = null;
     private context: BrowserContext | null = null;
     private page: Page | null = null;
@@ -38,18 +33,60 @@ export class xhsService{
                 await this.close();
             }
 
+            // 启动浏览器
             this.browser = await chromium.launch({ headless: false });
             this.context = await this.browser.newContext();
+            logger.info('Try to add script manually');
+            // await this.context.addInitScript({path: './libs/stealth.min.js'});
+            // await this.context.addInitScript({
+            //     path: path.resolve(__dirname, 'libs/stealth.min.js'),
+            //   });
+
+            const stealthPath = path.resolve(__dirname, '../../../libs/stealth.min.js');
+            await this.context.addInitScript({ path: stealthPath });
+              
+            logger.info('After the stealth.min.js');
+
+            await this.context.addCookies(
+                [
+                    {
+                        "name": "webId",
+                        "value": "xxx123",  
+                        "domain": ".xiaohongshu.com",
+                        "path": "/",
+                    }
+                ]
+            );
             this.page = await this.context.newPage();
 
+            // 登录流程
             const Login = new xhsLogin(loginType, this.context, this.page, '', cookieStr);
             await Login.begin();
 
+            // 获取登录后的 Cookie
             const cookies = await this.context.cookies();
             const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+            const cookieDict = Object.fromEntries(cookies.map(c => [c.name, c.value]));
 
-            logger.info(`[XiaoHongShuService] 登录成功，Cookie = ${cookieString}`);
+            if (this.client) {
+                await this.client.updateCookies(cookieString, cookieDict);
+                logger.info('[xhsService] Cookies successfully updated in xhsClient');
+            }
 
+            logger.info(`[loginXiaoHongShu] cookies after login: ${cookieString}`);
+
+            // 重点：找 a1
+            const a1Cookie = cookies.find(c => c.name === 'a1');
+            if (a1Cookie) {
+            logger.info(`[loginXiaoHongShu] Found a1: ${a1Cookie.value}`);
+            } else {
+            logger.warn('[loginXiaoHongShu] a1 NOT FOUND in cookies!');
+            }
+                    
+
+            logger.info(`[xhsService] 登录成功，Cookie = ${cookieString}`);
+
+            // 初始化 xhsClient
             this.client = new xhsClient({
                 headers: {
                     'User-Agent': 'Mozilla/5.0',
@@ -60,16 +97,16 @@ export class xhsService{
                 cookieDict: Object.fromEntries(cookies.map(c => [c.name, c.value])),
             });
         } catch (error: any) {
-            logger.error(`[XiaoHongShuService] 登录失败: ${error.message}`);
+            logger.info("Got an error here");
+            logger.error(`[xhsService] 登录失败: ${error.message}`);
             throw error;
         }
+        logger.info('Succesfully create client');
+        // await this.client.updateCookies(cookieStr,)
     }
 
     /**
      * 确保已登录，如果未登录且启用自动登录，则执行登录流程
-     * @param autoLogin - 是否启用自动登录
-     * @param loginType - 登录类型
-     * @param cookieStr - 如果使用 cookie 登录，传入 cookie 字符串
      */
     private async ensureLoggedIn(
         autoLogin: boolean,
@@ -77,56 +114,30 @@ export class xhsService{
         cookieStr?: string
     ): Promise<void> {
         if (!this.client) {
+            logger.info('There is no client');
+            logger.info(`autoLogin ${autoLogin}, loginType: ${loginType}`);
             if (autoLogin && loginType) {
-                logger.info('[XiaoHongShuService] 未登录，自动执行登录流程...');
+                logger.info('[xhsService] 未登录，自动执行登录流程...');
                 await this.loginXiaoHongShu(loginType, cookieStr);
             } else {
-                throw new Error('XiaoHongShuClient 未初始化，请先手动登录或在调用方法时设置autoLogin=true并传loginType');
+                throw new Error('xhsClient 未初始化，请先手动登录或启用autoLogin');
             }
         } else {
-            const isLogged = await this.client.pong();
+            // const isLogged = await this.client.pong();
+            const isLogged = false;
+            logger.info(`[xhsService] 登录状态: ${isLogged}`);
             if (!isLogged && autoLogin && loginType) {
-                logger.info('[XiaoHongShuService] Cookie 失效，自动再次登录...');
+                logger.info('[xhsService] Cookie 失效，自动再次登录...');
                 await this.loginXiaoHongShu(loginType, cookieStr);
             } else if (!isLogged) {
-                throw new Error('XiaoHongShuClient 未登录或已失效，请先调用 loginXiaoHongShu 或启用 autoLogin');
+                // await this.loginXiaoHongShu(loginType, cookieStr);
+                throw new Error('xhsClient 未登录或已失效，请先调用 loginXiaoHongShu 或启用 autoLogin');
             }
         }
     }
 
     /**
-     * 根据关键词搜索笔记
-     * @param keyword - 搜索关键词
-     * @param page - 分页数
-     * @param autoLogin - 是否启用自动登录
-     * @param loginType - 登录类型
-     * @param cookieStr - 如果使用 cookie 登录，传入 cookie 字符串
-     * @returns 搜索结果
-     */
-    // public async searchXiaoHongShu(
-    //     keyword: string,
-    //     page: number = 1,
-    //     autoLogin: boolean = false,
-    //     loginType?: 'qrcode' | 'phone' | 'cookie',
-    //     cookieStr?: string
-    // ): Promise<any> {
-    //     await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
-
-    //     if (!this.client) {
-    //         throw new Error('XiaoHongShuClient 未初始化');
-    //     }
-    //     return this.client.getNoteByKeyword(keyword, page);
-    // }
-
-    /**
      * 获取笔记详情
-     * @param noteId - 笔记 ID
-     * @param xsec_source - 渠道来源
-     * @param xsec_token - 验证 token
-     * @param autoLogin - 是否启用自动登录
-     * @param loginType - 登录类型
-     * @param cookieStr - 如果使用 cookie 登录，传入 cookie 字符串
-     * @returns 笔记详情
      */
     public async getXiaoHongShuDetail(
         noteId: string,
@@ -139,18 +150,13 @@ export class xhsService{
         await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
 
         if (!this.client) {
-            throw new Error('XiaoHongShuClient 未初始化');
+            throw new Error('xhsClient 未初始化');
         }
         return this.client.getNoteById(noteId, xsec_source, xsec_token);
     }
 
     /**
      * 获取创作者信息
-     * @param creatorID - 创作者 ID
-     * @param autoLogin - 是否启用自动登录
-     * @param loginType - 登录类型
-     * @param cookieStr - 如果使用 cookie 登录，传入 cookie 字符串
-     * @returns 创作者信息
      */
     public async getCreatorInfoByID(
         creatorID: string,
@@ -161,21 +167,13 @@ export class xhsService{
         await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
 
         if (!this.client) {
-            throw new Error('XiaoHongShuClient 未初始化');
+            throw new Error('xhsClient 未初始化');
         }
         return this.client.getCreatorInfo(creatorID);
     }
 
     /**
      * 获取创作者的所有笔记
-     * @param creatorId - 创作者 ID
-     * @param crawlInterval - 爬取间隔（秒）
-     * @param callback - 回调函数，每次获取一批笔记后调用
-     * @param autoLogin - 是否启用自动登录
-     * @param loginType - 登录类型
-     * @param cookieStr - 如果使用 cookie 登录，传入 cookie 字符串
-     * @param maxCount - 最大爬取数量
-     * @returns 笔记列表
      */
     public async getAllNotesByCreatorId(
         creatorId: string,
@@ -188,67 +186,113 @@ export class xhsService{
     ): Promise<any[]> {
         await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
 
+        logger.error('getAllNotesByCreatorId: ensured Login')
+
         if (!this.client) {
-            throw new Error('XiaoHongShuClient 未初始化');
+            throw new Error('xhsClient 未初始化');
         }
 
-        const creatorInfo = await this.client.getCreatorInfo(creatorId);
-        const lfidContainerId = creatorInfo.lfid_container_id;
-        if (!lfidContainerId) {
-            throw new Error('获取用户容器信息失败, 无法继续');
-        }
-
-        const result: any[] = [];
-        let notesHasMore = true;
-        let sinceId = 0;
-        let crawlerTotalCount = 0;
-
-        while (notesHasMore) {
-            const notesRes = await this.client.getNotesByCreator(creatorId, lfidContainerId, sinceId);
-            if (!notesRes) {
-                logger.error(`[XiaoHongShuService] 用户 ${creatorId} 的数据可能被封禁或无法访问`);
-                break;
-            }
-
-            sinceId = parseInt(notesRes.cardlistInfo?.since_id || '0', 10);
-
-            if (!notesRes.cards) {
-                logger.info(`[XiaoHongShuService] 响应中未找到 'cards'，原始响应: ${JSON.stringify(notesRes)}`);
-                break;
-            }
-
-            const notes = notesRes.cards.filter((note: any) => note.card_type === 9);
-            logger.info(`[XiaoHongShuService] 本轮获取到用户 ${creatorId} 的帖子数量: ${notes.length}`);
-
+        logger.error('Try to get all notes by creator');
+        const allNotes: any[] = await this.client.getAllNotesByCreator(creatorId, crawlInterval, async (notes) => {
             if (callback) {
                 await callback(notes);
             }
+        });
+        logger.error('Successful get all notes by creator');
 
-            result.push(...notes);
-            crawlerTotalCount += notes.length;
-
-            if (maxCount !== null && result.length >= maxCount) {
-                logger.info(`[XiaoHongShuService] 达到最大爬取数量限制: ${maxCount}`);
-                return result.slice(0, maxCount);
-            }
-
-            await this.sleep(crawlInterval * 1000);
-
-            const total = notesRes.cardlistInfo?.total ?? 0;
-            notesHasMore = total > crawlerTotalCount;
+        if (maxCount !== null && allNotes.length > maxCount) {
+            return allNotes.slice(0, maxCount);
         }
 
-        logger.info(`[XiaoHongShuService] 用户 ${creatorId} 的所有帖子获取完毕, 总数 = ${result.length}`);
-        return result;
+        return allNotes;
     }
 
     /**
-     * 关闭浏览器实例
+     * 直接在 xhsService 中新增的方法：
+     * 根据 userId 获取指定数量（maxCount）的笔记，并逐条获取笔记详情。
+     * 不再获取评论。
+     */
+    public async getCreatorAndNotes(
+        userId: string,
+        maxCount: number,
+        autoLogin: boolean = true,
+        loginType?: 'qrcode',
+        cookieStr?: string
+    ): Promise<any[]> {
+        // 1. 确保已登录
+        logger.info('check whether it logged in');
+        await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
+        logger.info('after ensuredLogged in');
+
+
+        if (!this.client) {
+            throw new Error('xhsClient 未初始化');
+        }
+
+        logger.info(`[xhsService.getCreatorAndNotes] 获取创作者ID = ${userId} 的笔记，最多 ${maxCount} 条`);
+
+        // 2. 执行一次性获取该用户所有笔记（或部分笔记）：
+        //    传入 maxCount，用于截断
+        const allNotes = await this.getAllNotesByCreatorId(
+            userId,
+            1.0,        // crawlInterval
+            undefined,   // 无需在每次分页回调里获取详情，可直接最后再获取
+            autoLogin,
+            loginType,
+            cookieStr,
+            maxCount
+        );
+
+        logger.info(`[xhsService.getCreatorAndNotes] 已获取到笔记数量: ${allNotes.length}`);
+
+        // 3. 并发获取每条笔记的详情（HTML + API 多次尝试）
+        const limit = pLimit(5); // 并发限制，如需要可调大/小
+        const detailTasks = allNotes.map(note => limit(async () => {
+            // 先尝试带 Cookie 的 HTML
+            let detail = await this.client!.getNoteByIdFromHtml(
+                note.note_id,
+                note.xsec_source,
+                note.xsec_token,
+                true
+            );
+            if (!detail) {
+                // 如果失败，再试一下不带 Cookie 的 HTML
+                detail = await this.client!.getNoteByIdFromHtml(
+                    note.note_id,
+                    note.xsec_source,
+                    note.xsec_token,
+                    false
+                );
+            }
+            if (!detail) {
+                // 如果还拿不到，就试 API
+                detail = await this.client!.getNoteById(
+                    note.note_id,
+                    note.xsec_source,
+                    note.xsec_token
+                );
+            }
+            return detail || null;
+        }));
+
+        const detailResults = await Promise.all(detailTasks);
+        // 过滤掉获取详情失败的
+        const validDetails = detailResults.filter(d => d !== null);
+
+        logger.info(`[xhsService.getCreatorAndNotes] 成功获取到笔记详情数量: ${validDetails.length}`);
+
+        // 4. 这里可根据需求写入数据库或返回
+        //    例如: await xhs_store.update_xhs_notes(validDetails);
+        return validDetails;
+    }
+
+    /**
+     * 关闭浏览器
      */
     public async close(): Promise<void> {
         if (this.browser) {
             await this.browser.close();
-            logger.info('[XiaoHongShuService] 浏览器已关闭');
+            logger.info('[xhsService] 浏览器已关闭');
             this.browser = null;
             this.context = null;
             this.page = null;
@@ -258,9 +302,8 @@ export class xhsService{
 
     /**
      * 延迟函数
-     * @param ms - 延迟毫秒数
      */
-    private sleep(ms: number): Promise<void> {
+    private async sleep(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }

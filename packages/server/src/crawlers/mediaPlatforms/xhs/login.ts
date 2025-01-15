@@ -78,7 +78,7 @@ export class xhsLogin implements BaseLogin {
 
     public async loginByQrcode(): Promise<void> {
         logger.info('[XiaoHongShuLogin.login_by_qrcode] Begin login XiaoHongShu by qrcode ...');
-        await this.contextPage.goto(this.xiaohongshuLoginUrl, { waitUntil: 'networkidle' });
+        await this.contextPage.goto(this.xiaohongshuLoginUrl);
 
         const qrcodeImgSelector = "xpath=//img[@class='qrcode-img']"; // 根据实际情况调整选择器
         let base64QrcodeImg = await findLoginQrcode(this.contextPage, qrcodeImgSelector);
@@ -259,5 +259,12 @@ export class xhsLogin implements BaseLogin {
 
         await this.browserContext.addCookies(cookiesToAdd);
         logger.info('[XiaoHongShuLogin.login_by_cookies] Cookies set successfully.');
+
+        const cookies = await this.browserContext.cookies();
+        // console.log(cookies);  // 看里面有没有 a1
+
+        // const b1Val = await this.contextPage.evaluate(() => localStorage.getItem('b1'));
+        // console.log('b1Val in TS:', b1Val);
+
     }
 }

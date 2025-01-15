@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "start": "node dist",
-    "build": "rimraf dist/** && tsc && cp .env dist"
+    "build": "rimraf dist/** && tsc && cp .env dist && cp -R src/libs dist/"
   },
   "dependencies": {
     "@encrejs/api": "^0.0.3",

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { xhsService } from '../../../services/crawlers/xhs/index.js';
+import { logger } from '../../../utils/crawlers/logger.js';
 
 const XiaoHongshuService = new xhsService();
 
@@ -24,6 +25,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
 export async function getAllNotes(req: Request, res: Response): Promise<void> {
     const { creatorId, crawlInterval, autoLogin, loginType, cookieStr, maxCount } = req.body;
+    logger.info('getAllNotes for xhs');
   
     if (!creatorId) {
       res.status(400).json({ error: '用户 ID (creatorId) 是必填的' });
@@ -31,14 +33,12 @@ export async function getAllNotes(req: Request, res: Response): Promise<void> {
     }
   
     try {
-      const notes = await XiaoHongshuService.getAllNotesByCreatorId(
+      const notes = await XiaoHongshuService.getCreatorAndNotes(
         creatorId,
-        crawlInterval || 1.0,
-        undefined,
+        maxCount,
         autoLogin,
         loginType,
-        cookieStr,
-        maxCount
+        cookieStr
       );
       res.json({ data: notes });
     } catch (error) {
