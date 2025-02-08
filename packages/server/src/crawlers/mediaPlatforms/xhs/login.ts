@@ -237,6 +237,7 @@ export class xhsLogin implements BaseLogin {
 
     public async loginByCookies(): Promise<void> {
         logger.info("[XiaoHongShuLogin.login_by_cookies] Begin login XiaoHongShu by cookie ...");
+        logger.info(this.cookieStr);
         if (!this.cookieStr || this.cookieStr.trim().length === 0) {
             logger.info('[XiaoHongShuLogin.login_by_cookies] No cookies provided, skipping cookie login to test guest mode.');
             return;

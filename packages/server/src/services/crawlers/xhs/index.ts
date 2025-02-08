@@ -58,6 +58,7 @@ export class xhsService {
                 ]
             );
             this.page = await this.context.newPage();
+            // await this.page.goto("https://www.xiaohongshu.com");
 
             // 登录流程
             const Login = new xhsLogin(loginType, this.context, this.page, '', cookieStr);
@@ -68,10 +69,10 @@ export class xhsService {
             const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
             const cookieDict = Object.fromEntries(cookies.map(c => [c.name, c.value]));
 
-            if (this.client) {
-                await this.client.updateCookies(cookieString, cookieDict);
-                logger.info('[xhsService] Cookies successfully updated in xhsClient');
-            }
+            // if (this.client) {
+            //     await this.client.updateCookies(cookieString, cookieDict);
+            //     logger.info('[xhsService] Cookies successfully updated in xhsClient');
+            // }
 
             logger.info(`[loginXiaoHongShu] cookies after login: ${cookieString}`);
 
@@ -94,7 +95,7 @@ export class xhsService {
                     'Content-Type': 'application/json',
                 },
                 playwrightPage: this.page,
-                cookieDict: Object.fromEntries(cookies.map(c => [c.name, c.value])),
+                cookieDict: cookieDict
             });
         } catch (error: any) {
             logger.info("Got an error here");
@@ -184,7 +185,7 @@ export class xhsService {
         cookieStr?: string,
         maxCount: number | null = null
     ): Promise<any[]> {
-        await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
+        // await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
 
         logger.error('getAllNotesByCreatorId: ensured Login')
 

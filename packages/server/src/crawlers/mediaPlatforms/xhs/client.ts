@@ -119,18 +119,18 @@ export class xhsClient {
     // logger.info(`[preHeaders] encryptParams: ${JSON.stringify(encryptParams)}`);
   
     // 5. 调用 sign(...)
-    // const signs = sign(
-    //   this.cookieDict['a1'] ?? '',
-    //   localStorage['b1'] ?? '',
-    //   encryptParams['X-s'] ?? '',
-    //   String(encryptParams['X-t'] ?? ''),
-    // );
     const signs = sign(
-      '1944513ecackf9el2k24gi2pfs318ztgnol4ztwwf30000180555',
-      'I38rHdgsjopgIvesdVwgIC+oIELmBZ5e3VwXLgFTIxS3bqwErFeexd0ekncAzMFYnqthIhJeSnMDKutRI3KsYorWHPtGrbV0P9WfIi/eWc6eYqtyQApPI37ekmR1QL+5Ii3sdnoeSfGYHqwl2qt5B0DoIx+PGDi/sVtkIxdsxuwb4qtkIhuaIE3e3LV0I3VTIC7e0utl2ADmsLveDSKsSPw5IEvsiVtJOqw8BuwfPpdeTFWOIx4TIiu6ZPwrPut5IvlaLbgs3qtxIxes1VwHIkumIkIyejgsY/WTge7eSqte/D7sDcpipedeYrDtIC6eDVw2IENsSqtlnlSuNjVtIx5e1qt3bmAeVn8LIESGIhEe+AFDI3EPKI8BIiW7ZPwFIvGj4sesYINsxVwSIC7efnJe0fEqIiAe6WrS8qwUIE7s1f0s6WAeiVtwpjNeYuw7Ivl8ze0efVwEg9JsWVw8IxI2I38isqwZgVtPzg8QwcNejd/eiqwoIhAsS/AskFRYIk/s0MvskdE0IhgsiVwDIhGdQqwJ8ut9I33e3PtVIiNsiqwlIh/eDqtAHPwPmVwDI3MdIv4pH9ztrY3s3qwEIiT+IiesfPwoeWccpj3sDskuIkGyGuwbmPwhICdekVtUQpdeipJsTrELIhvs6m3ejPtsoI==',
+      this.cookieDict['a1'] ?? '',
+      localStorage['b1'] ?? '',
       encryptParams['X-s'] ?? '',
       String(encryptParams['X-t'] ?? ''),
     );
+    // const signs = sign(
+    //   '1944513ecackf9el2k24gi2pfs318ztgnol4ztwwf30000180555',
+    //   'I38rHdgsjopgIvesdVwgIC+oIELmBZ5e3VwXLgFTIxS3bqwErFeexd0ekncAzMFYnqthIhJeSnMDKutRI3KsYorWHPtGrbV0P9WfIi/eWc6eYqtyQApPI37ekmR1QL+5Ii3sdnoeSfGYHqwl2qt5B0DoIx+PGDi/sVtkIxdsxuwb4qtkIhuaIE3e3LV0I3VTIC7e0utl2ADmsLveDSKsSPw5IEvsiVtJOqw8BuwfPpdeTFWOIx4TIiu6ZPwrPut5IvlaLbgs3qtxIxes1VwHIkumIkIyejgsY/WTge7eSqte/D7sDcpipedeYrDtIC6eDVw2IENsSqtlnlSuNjVtIx5e1qt3bmAeVn8LIESGIhEe+AFDI3EPKI8BIiW7ZPwFIvGj4sesYINsxVwSIC7efnJe0fEqIiAe6WrS8qwUIE7s1f0s6WAeiVtwpjNeYuw7Ivl8ze0efVwEg9JsWVw8IxI2I38isqwZgVtPzg8QwcNejd/eiqwoIhAsS/AskFRYIk/s0MvskdE0IhgsiVwDIhGdQqwJ8ut9I33e3PtVIiNsiqwlIh/eDqtAHPwPmVwDI3MdIv4pH9ztrY3s3qwEIiT+IiesfPwoeWccpj3sDskuIkGyGuwbmPwhICdekVtUQpdeipJsTrELIhvs6m3ejPtsoI==',
+    //   encryptParams['X-s'] ?? '',
+    //   String(encryptParams['X-t'] ?? ''),
+    // );
     // logger.info(`[preHeaders] signs: ${JSON.stringify(signs)}`);
   
     return {
@@ -176,7 +176,7 @@ export class xhsClient {
     if (resp.status === 471 || resp.status === 461) {
       const verifyType = resp.headers.get('Verifytype');
       const verifyUuid = resp.headers.get('Verifyuuid');
-      throw new Error(`出现验证码，Verifytype: ${verifyType}，Verifyuuid: ${verifyUuid}`);
+      throw new Error(`出现验证码，Verifytype: ${verifyType}，Verifyuuid: ${verifyUuid},Response: ${resp}`);
     }
 
     const text = await resp.text();

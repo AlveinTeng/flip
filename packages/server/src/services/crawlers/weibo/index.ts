@@ -13,6 +13,7 @@ export class WeiboService {
     loginType: 'qrcode' | 'phone' | 'cookie',
     cookieStr: string = ''
   ): Promise<void> {
+    logger.info('[WeiboService]: loginWeibo called');
     try {
       if (this.browser) {
         await this.close();
@@ -53,7 +54,7 @@ export class WeiboService {
     if (!this.client) {
       if (autoLogin && loginType) {
         logger.info('[WeiboService] 未登录，自动执行登录流程...');
-        await this.loginWeibo(loginType='qrcode', cookieStr);
+        await this.loginWeibo(loginType, cookieStr);
       } else {
         throw new Error('WeiboClient 未初始化，请先手动登录或在调用方法时设置autoLogin=true并传loginType');
       }
@@ -121,8 +122,32 @@ export class WeiboService {
       cookieStr?: string,
       maxCount: number | null = null
   ): Promise<any[]> {
-      await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
+    if (!this.client) {
+      logger.info('[WeiBoService]: ')
+      try{
+        this.browser = await chromium.launch({ headless: false });
+        this.context = await this.browser.newContext();
+        this.page = await this.context.newPage();
 
+        const cookies = await this.context.cookies();
+        const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+
+        this.client = new WeiboClient({
+          headers: {
+            'User-Agent': 'Mozilla/5.0',
+            'Cookie': cookieString,
+            'Content-Type': 'application/json',
+          },
+          playwrightPage: this.page,
+          cookieDict: Object.fromEntries(cookies.map(c => [c.name, c.value])),
+        });
+      } catch (error) {
+        logger.error(`[WeiboService] init client failed: ${(error as Error).message}`);
+        throw error;
+      }
+    }
+      // await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
+      
       if (!this.client) {
           throw new Error('WeiboClient 未初始化');
       }
