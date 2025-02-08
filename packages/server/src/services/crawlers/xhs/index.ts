@@ -6,7 +6,6 @@ import { Browser, BrowserContext, Page, chromium } from 'playwright';
 import { logger } from '../../../utils/crawlers/logger.js';
 import { xhsLogin } from '../../../crawlers/mediaPlatforms/xhs/login.js'; 
 import { xhsClient } from '../../../crawlers/mediaPlatforms/xhs/client.js'; 
-import { DataFetchError, IPBlockError } from '../../../exceptions/crawler.js';
 import { fileURLToPath } from 'url';
 // import { log } from 'console';
 import * as path from 'path';
@@ -50,10 +49,10 @@ export class xhsService {
             await this.context.addCookies(
                 [
                     {
-                        "name": "webId",
-                        "value": "xxx123",  
-                        "domain": ".xiaohongshu.com",
-                        "path": "/",
+                        'name': 'webId',
+                        'value': 'xxx123',  
+                        'domain': '.xiaohongshu.com',
+                        'path': '/',
                     }
                 ]
             );
@@ -98,7 +97,7 @@ export class xhsService {
                 cookieDict: cookieDict
             });
         } catch (error: any) {
-            logger.info("Got an error here");
+            logger.info('Got an error here');
             logger.error(`[xhsService] 登录失败: ${error.message}`);
             throw error;
         }
@@ -187,7 +186,7 @@ export class xhsService {
     ): Promise<any[]> {
         // await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
 
-        logger.error('getAllNotesByCreatorId: ensured Login')
+        logger.error('getAllNotesByCreatorId: ensured Login');
 
         if (!this.client) {
             throw new Error('xhsClient 未初始化');

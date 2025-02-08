@@ -4,8 +4,8 @@ import fetch, { RequestInit } from 'node-fetch';
 import { Page } from 'playwright';
 import { logger } from '../../../utils/crawlers/logger.js';
 import { DataFetchError, IPBlockError } from '../../../exceptions/crawler.js';
-import {sign} from './help.js'
-import {SearchNoteType} from './field.js'
+import { sign } from './help.js';
+import { SearchNoteType } from './field.js';
 // import {encodeUtf8AndBase64} from './help.js'
 // 这里可以和 Python 保持一致
 const IP_ERROR_CODE = 300012;
@@ -103,7 +103,7 @@ export class xhsClient {
   
     // 3. 检查 b1
     if (!localStorage['b1']) {
-      logger.warn(`[preHeaders] b1 is not found in localStorage!`);
+      logger.warn('[preHeaders] b1 is not found in localStorage!');
     }
   
     // 4. 调用 window._webmsxyw
@@ -224,7 +224,7 @@ export class xhsClient {
     // const bodyStr = JSON.stringify(data); // Python 里还有 ensure_ascii / separators 等，你可视需求而定
     const bodyStr = JSON.stringify(data, (key, value) => {
       // 可定制 JSON.stringify 的序列化行为
-      return typeof value === "string" ? value : value;
+      return typeof value === 'string' ? value : value;
     });
     return this.request('POST', `${this.host}${uri}`, {
       headers: signedHeaders,
