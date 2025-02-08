@@ -83,7 +83,7 @@ export async function getCreatorInfo(req: Request, res: Response): Promise<void>
  * 获取用户的所有帖子
  */
 export async function getAllNotes(req: Request, res: Response): Promise<void> {
-  const { creatorId, crawlInterval, autoLogin, loginType, cookieStr, maxCount } = req.body;
+  const { creatorId, crawlInterval,  maxCount } = req.body;
 
   if (!creatorId) {
     res.status(400).json({ error: '用户 ID (creatorId) 是必填的' });
@@ -95,9 +95,6 @@ export async function getAllNotes(req: Request, res: Response): Promise<void> {
       creatorId,
       crawlInterval || 1.0,
       undefined,
-      autoLogin,
-      loginType,
-      cookieStr,
       maxCount
     );
     res.json({ data: notes });

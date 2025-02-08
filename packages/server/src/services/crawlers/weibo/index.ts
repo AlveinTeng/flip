@@ -9,11 +9,7 @@ export class WeiboService {
   private context: BrowserContext | null = null;
   private page: Page | null = null;
   private client: WeiboClient | null = null;
-  // private cache: NodeCache;
   private lfidContainerId: any | null = null; 
-  // constructor() {
-  //   this.cache = new NodeCache();
-  // }
 
   private async initializeClient(): Promise<void> {
     if (this.client) return; // If already initialized, skip
@@ -89,7 +85,7 @@ export class WeiboService {
     if (!this.client) {
       if (autoLogin && loginType) {
         logger.info('[WeiboService] 未登录，自动执行登录流程...');
-        await this.loginWeibo(loginType=loginType, cookieStr);
+        await this.loginWeibo(loginType, cookieStr);
       } else {
         throw new Error('WeiboClient 未初始化，请先手动登录或在调用方法时设置autoLogin=true并传loginType');
       }
@@ -138,14 +134,10 @@ export class WeiboService {
     creatorId: string,
   ): Promise<any> {
 
-    // const cachedInfo = this.cache.get(`creatorInfo:${creatorId}`);
-    // if (cachedInfo) {
-    //     console.log(`[WeiboService] Returning cached creator info for ${creatorId}`);
-    //     return cachedInfo;
-    // }
-
-    // await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
-    await this.initializeClient();
+    if(!this.client){
+      await this.initializeClient();
+    }
+    
 
     if (!this.client) {
       throw new Error('WeiboClient 未初始化');
@@ -165,9 +157,6 @@ export class WeiboService {
       creatorId: string,
       crawlInterval: number = 1.0,
       callback?: (notes: any[]) => Promise<void>,
-      autoLogin = true,
-      loginType?: 'qrcode' | 'phone' | 'cookie',
-      cookieStr?: string,
       maxCount: number | null = null
   ): Promise<any[]> {
     if (!this.client) {
