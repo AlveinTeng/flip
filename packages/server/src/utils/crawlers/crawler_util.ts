@@ -184,18 +184,31 @@ export function getMobileUserAgent(): string {
  * @param cookies Playwright 获取的 Cookie 数组
  * @returns [cookie string, cookie dict]
  */
-export function convertCookies(cookies: Cookie[] | null | undefined): [ Record<string, string>] {
+export function convertCookies(cookies: Cookie[] | null | undefined): [string, Record<string, string>] {
+    // if (!cookies || cookies.length === 0) {
+    //     return [{}];
+    // }
+
+    // const cookieDict: Record<string, string> = {};
+
+    // cookies.forEach(cookie => {
+    //     cookieDict[cookie.name] = cookie.value;
+    // });
+
+    // return [cookieDict];
+
     if (!cookies || cookies.length === 0) {
-        return [{}];
+        return ["", {}];
     }
 
+    const cookiesStr = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
     const cookieDict: Record<string, string> = {};
 
-    cookies.forEach(cookie => {
+    for (const cookie of cookies) {
         cookieDict[cookie.name] = cookie.value;
-    });
+    }
 
-    return [cookieDict];
+    return [cookiesStr, cookieDict];
 }
 
 /**
@@ -349,3 +362,5 @@ export function extractUrlParamsToDict(url: string): Record<string, string> {
 
     return urlParamsDict;
 }
+
+

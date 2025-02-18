@@ -45,7 +45,7 @@ export class xhsLogin implements BaseLogin {
 
     private async checkLoginState(noLoggedInSession?: string): Promise<boolean> {
         const currentCookies = await this.browserContext.cookies();
-        const [cookieDict] = convertCookies(currentCookies);
+        const [cookieStr, cookieDict] = convertCookies(currentCookies);
 
         if ("web_session" in cookieDict && cookieDict['web_session'] !== noLoggedInSession) {
             return true;
@@ -96,7 +96,7 @@ export class xhsLogin implements BaseLogin {
 
         // 获取未登录状态的 session
         const currentCookies = await this.browserContext.cookies();
-        const [cookieDict] = convertCookies(currentCookies);
+        const [cookieStr, cookieDict] = convertCookies(currentCookies);
         const noLoggedInSession = cookieDict['web_session'];
 
         // 显示登录二维码

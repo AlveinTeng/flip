@@ -6,6 +6,8 @@ import { logger } from '../../../utils/crawlers/logger.js';
 import { DataFetchError, IPBlockError } from '../../../exceptions/crawler.js';
 import {sign} from './help.js'
 import {SearchNoteType} from './field.js'
+import { BrowserContext } from 'playwright';
+import { convertCookies } from '../../../utils/crawlers/crawler_util.js';
 // import {encodeUtf8AndBase64} from './help.js'
 // 这里可以和 Python 保持一致
 const IP_ERROR_CODE = 300012;
@@ -93,13 +95,13 @@ export class xhsClient {
     await this.playwrightPage.goto('https://www.xiaohongshu.com', { waitUntil: 'load' });
     
     // 1. 打印一下 cookieDict['a1']
-    logger.info(`[preHeaders] cookieDict['a1']: ${this.cookieDict['a1']}`);
+    // logger.info(`[preHeaders] cookieDict['a1']: ${this.cookieDict['a1']}`);
   
     // 2. 获取 localStorage
     const localStorage: Record<string, string> = await this.playwrightPage.evaluate(() => {
       return Object.fromEntries(Object.entries(localStorage));
     });
-    logger.info(`[preHeaders] localStorage: ${JSON.stringify(localStorage)}`);
+    // logger.info(`[preHeaders] localStorage: ${JSON.stringify(localStorage)}`);
   
     // 3. 检查 b1
     if (!localStorage['b1']) {
@@ -149,6 +151,60 @@ export class xhsClient {
    * @param url    请求地址（加上 host）
    * @param options 其它参数，比如 body / params / returnResponse 等
    */
+  // private async request<T = any>(
+  //   method: 'GET'|'POST',
+  //   url: string,
+  //   options: {
+  //     body?: any;
+  //     headers?: Record<string, string>;
+  //     returnResponse?: boolean; // 用来决定是否返回原始响应文本
+  //   } = {}
+  // ): Promise<T> {
+  //   const { body, headers, returnResponse = false } = options;
+
+  //   const requestOptions: RequestInit = {
+  //     method,
+  //     headers: {
+  //       ...headers
+  //     },
+  //     body: method === 'POST' && body ? body : undefined,
+  //   };
+
+  //   // 如要支持代理，可以在这里添加 agent
+  //   // if (this.proxies) { ... }
+
+  //   const resp = await fetch(url, requestOptions);
+  //   // 检查验证码等情况
+  //   if (resp.status === 471 || resp.status === 461) {
+  //     const verifyType = resp.headers.get('Verifytype');
+  //     const verifyUuid = resp.headers.get('Verifyuuid');
+  //     throw new Error(`出现验证码，Verifytype: ${verifyType}，Verifyuuid: ${verifyUuid},Response: ${resp}`);
+  //   }
+
+  //   const text = await resp.text();
+  //   if (returnResponse) {
+  //     // 直接返回文本给外部做正则解析
+  //     return text as any;
+  //   }
+  //   // 这里默认返回 json，但要注意 try-catch
+  //   let data;
+  //   try {
+  //     data = JSON.parse(text);
+  //   } catch (e) {
+  //     logger.error(`[xhsClient.request] JSON.parse error: ${e}`);
+  //     throw new Error(`JSON 解析失败, 响应: ${text.slice(0, 100)}...`);
+  //   }
+
+  //   // 判断 success
+  //   if (data.success) {
+  //     return data.data || data.success;
+  //   } else if (data.code === IP_ERROR_CODE) {
+  //     throw new IPBlockError(this.IP_ERROR_STR);
+  //   } else {
+  //     throw new DataFetchError(data.msg || 'DataFetchError');
+  //   }
+  // }
+
   private async request<T = any>(
     method: 'GET'|'POST',
     url: string,
@@ -159,7 +215,7 @@ export class xhsClient {
     } = {}
   ): Promise<T> {
     const { body, headers, returnResponse = false } = options;
-
+  
     const requestOptions: RequestInit = {
       method,
       headers: {
@@ -167,33 +223,38 @@ export class xhsClient {
       },
       body: method === 'POST' && body ? body : undefined,
     };
-
-    // 如要支持代理，可以在这里添加 agent
-    // if (this.proxies) { ... }
-
+  
     const resp = await fetch(url, requestOptions);
-    // 检查验证码等情况
-    if (resp.status === 471 || resp.status === 461) {
-      const verifyType = resp.headers.get('Verifytype');
-      const verifyUuid = resp.headers.get('Verifyuuid');
-      throw new Error(`出现验证码，Verifytype: ${verifyType}，Verifyuuid: ${verifyUuid},Response: ${resp}`);
+  
+    // Check for common HTTP error statuses
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`HTTP Error: ${resp.status} - ${text.slice(0, 100)}...`);
     }
-
+  
+    const contentType = resp.headers.get('Content-Type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await resp.text();
+      logger.error(`[xhsClient.request] Unexpected content type: ${contentType}`);
+      throw new Error(`Expected JSON, but received: ${contentType}`);
+    }
+  
     const text = await resp.text();
     if (returnResponse) {
-      // 直接返回文本给外部做正则解析
       return text as any;
     }
-    // 这里默认返回 json，但要注意 try-catch
+  
     let data;
     try {
       data = JSON.parse(text);
     } catch (e) {
       logger.error(`[xhsClient.request] JSON.parse error: ${e}`);
-      throw new Error(`JSON 解析失败, 响应: ${text.slice(0, 100)}...`);
+      if (text.startsWith('<html>')) {
+        throw new Error('Received HTML response, expected JSON');
+      }
+      throw new Error(`JSON parse failed: ${text.slice(0, 100)}...`);
     }
-
-    // 判断 success
+  
     if (data.success) {
       return data.data || data.success;
     } else if (data.code === IP_ERROR_CODE) {
@@ -202,6 +263,7 @@ export class xhsClient {
       throw new DataFetchError(data.msg || 'DataFetchError');
     }
   }
+  
 
   /**
    * 发起 GET 请求（自带签名）
@@ -226,6 +288,7 @@ export class xhsClient {
       // 可定制 JSON.stringify 的序列化行为
       return typeof value === "string" ? value : value;
     });
+    logger.info(`[Post]: BodyString is ${bodyStr}`);
     return this.request('POST', `${this.host}${uri}`, {
       headers: signedHeaders,
       body: bodyStr,
@@ -239,27 +302,35 @@ export class xhsClient {
    */
   public async pong(): Promise<boolean> {
     logger.info('[xhsClient.pong] Checking login state...');
-    try {
-      // 调用任意一个需要登录的接口试试，比如搜索
-      const noteCard = await this.getNoteByKeyword('小红书');
-      if (noteCard && noteCard.items) {
-        return true;
-      }
-      return false;
-    } catch (err) {
-      logger.error(`[xhsClient.pong] Pong failed: ${err}`);
-      return false;
-    }
+    // try {
+    //   // 调用任意一个需要登录的接口试试，比如搜索
+    //   const noteCard = await this.getNoteByKeyword('小红书');
+    //   if (noteCard && noteCard.items) {
+    //     return true;
+    //   }
+    //   return false;
+    // } catch (err) {
+    //   logger.error(`[xhsClient.pong] Pong failed: ${err}`);
+    //   return false;
+    // }
+    return false;
     // return true;
   }
 
   /**
    * 更新 Cookie，一般在登录后或者 Cookie 发生变化后调用
    */
-  public async updateCookies(newCookieStr: string, newCookieDict: Record<string, string>) {
-    this.headers['Cookie'] = newCookieStr;
-    this.cookieDict = newCookieDict;
-  }
+  public async updateCookies(browserContext: BrowserContext): Promise<void> {
+    // Get cookies from the browser context
+    const cookies = await browserContext.cookies();
+
+    // Convert cookies to string and dictionary
+    const [cookieStr, cookieDict] = convertCookies(cookies);
+
+    // Update the client headers and cookie dictionary
+    this.headers['Cookie'] = cookieStr;
+    this.cookieDict = cookieDict;
+}
 
   /**
    * 根据关键字搜索笔记
@@ -397,7 +468,7 @@ export class xhsClient {
     cursor: string,
     pageSize: number = 30
   ): Promise<any> {
-    const uri = '/api/sns/web/v1/user_posted';
+    const uri = '/api/sns/web/v1/feed';
     const data = {
       user_id: userId,
       cursor,

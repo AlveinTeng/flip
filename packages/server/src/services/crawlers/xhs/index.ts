@@ -8,9 +8,19 @@ import { xhsLogin } from '../../../crawlers/mediaPlatforms/xhs/login.js';
 import { xhsClient } from '../../../crawlers/mediaPlatforms/xhs/client.js'; 
 import { DataFetchError, IPBlockError } from '../../../exceptions/crawler.js';
 import { fileURLToPath } from 'url';
+
+import { convertCookies } from '../../../utils/crawlers/crawler_util.js';
 // import { log } from 'console';
 import * as path from 'path';
 const __filename = fileURLToPath(import.meta.url);
+
+// Define or import IpInfoModel
+interface IpInfoModel {
+    ip: string;
+    port: number;
+    username?: string;
+    password?: string;
+}
 const __dirname = path.dirname(__filename);
 
 export class xhsService {
@@ -18,6 +28,118 @@ export class xhsService {
     private context: BrowserContext | null = null;
     private page: Page | null = null;
     private client: xhsClient | null = null;
+    private indexUrl: string = "https://www.xiaohongshu.com";
+    private userAgent: string;
+
+    constructor() {
+        this.userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+    }
+
+    private async formatProxyInfo(ipProxyInfo: IpInfoModel): Promise<[string, string]> {
+        // Implement proxy formatting logic here.
+        return ['', '']; // return formatted proxy details.
+    }
+
+    private async launchBrowser(chromium: any, proxy: any, userAgent: string, headless: boolean) {
+        const browserContext = await chromium.launchPersistentContext('', {
+            headless,
+            proxy,
+            userAgent,
+        });
+        return browserContext;
+    }
+
+    public async createXhsClient(httpxProxy: string | null): Promise<xhsClient> {
+        logger.info("[XiaoHongShuCrawler.createXhsClient] Begin create xiaohongshu API client ...");
+
+        // Convert cookies into the required format
+        const [cookieStr, cookieDict] = await convertCookies(await this.context!.cookies());
+
+        // Create and return the XiaoHongShuClient object
+        const xhsClientObj = new xhsClient({
+            proxies: httpxProxy,
+            headers: {
+                "User-Agent": this.userAgent,
+                "Cookie": cookieStr,
+                "Origin": "https://www.xiaohongshu.com",
+                "Referer": "https://www.xiaohongshu.com",
+                "Content-Type": "application/json;charset=UTF-8",
+            },
+            playwrightPage: this.page!,
+            cookieDict: cookieDict,
+        });
+
+        return xhsClientObj;
+    }
+
+    public async start(loginType: 'qrcode' | 'phone' | 'cookie', cookieStr: string = '', task: string): Promise<void> {
+        let playwrightProxyFormat: string | null = null;
+        let httpxProxyFormat: string | null = null;
+
+        // if (config.ENABLE_IP_PROXY) {
+        //     const ipProxyPool = await createIpPool(config.IP_PROXY_POOL_COUNT, true);
+        //     const ipProxyInfo: IpInfoModel = await ipProxyPool.getProxy();
+        //     [playwrightProxyFormat, httpxProxyFormat] = await this.formatProxyInfo(ipProxyInfo);
+        // }
+
+        const playwright = chromium;
+        this.context = await this.launchBrowser(
+            playwright,
+            playwrightProxyFormat,
+            this.userAgent,
+            false
+        );
+
+        const stealthPath = path.resolve(__dirname, '../../../libs/stealth.min.js');
+        // await this.context.addInitScript({ path: stealthPath });
+        if (this.context) {
+            await this.context.addInitScript({ path: stealthPath });
+        }
+
+        // Add cookie to avoid sliding captcha
+        if (this.context) {
+            await this.context.addCookies([{
+                name: 'webId',
+                value: 'xxx123', // any value
+                domain: '.xiaohongshu.com',
+                path: '/',
+            }]);
+        }
+
+        if (this.context) {
+            this.page = await this.context.newPage();
+        } else {
+            throw new Error('Browser context is not initialized');
+        }
+        await this.page.goto(this.indexUrl);
+
+        this.client= await this.createXhsClient(httpxProxyFormat);
+
+        if (!await this.client.pong()) {
+            const loginObj =  new xhsLogin(loginType, this.context, this.page, '', cookieStr);
+
+            await loginObj.begin();
+            await this.client.updateCookies(this.context);
+        }
+
+        // CrawlerType.set(config.CRAWLER_TYPE);
+
+        switch (task) {
+            case 'login':
+                await this.loginXiaoHongShu(loginType, cookieStr);
+                break;
+            case 'detail':
+                // await this.getSpecifiedNotes();
+                break;
+            case 'creator':
+                // await this.getCreatorsAndNotes();
+                break;
+            default:
+                break;
+        }
+
+        logger.info("[XiaoHongShuCrawler.start] Xhs Crawler finished ...");
+    }
 
     /**
      * 登录小红书
@@ -29,81 +151,27 @@ export class xhsService {
         cookieStr: string = ''
     ): Promise<void> {
         try {
-            if (this.browser) {
-                await this.close();
-            }
+            if(this.context) {
 
-            // 启动浏览器
-            this.browser = await chromium.launch({ headless: false });
-            this.context = await this.browser.newContext();
-            logger.info('Try to add script manually');
-            // await this.context.addInitScript({path: './libs/stealth.min.js'});
-            // await this.context.addInitScript({
-            //     path: path.resolve(__dirname, 'libs/stealth.min.js'),
-            //   });
+                const cookies = await this.context.cookies();
+                const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+                const cookieDict = Object.fromEntries(cookies.map(c => [c.name, c.value]));
 
-            const stealthPath = path.resolve(__dirname, '../../../libs/stealth.min.js');
-            await this.context.addInitScript({ path: stealthPath });
-              
-            logger.info('After the stealth.min.js');
+                logger.info(`[loginXiaoHongShu] cookies after login: ${cookieString}`);
 
-            await this.context.addCookies(
-                [
-                    {
-                        "name": "webId",
-                        "value": "xxx123",  
-                        "domain": ".xiaohongshu.com",
-                        "path": "/",
-                    }
-                ]
-            );
-            this.page = await this.context.newPage();
-            // await this.page.goto("https://www.xiaohongshu.com");
-
-            // 登录流程
-            const Login = new xhsLogin(loginType, this.context, this.page, '', cookieStr);
-            await Login.begin();
-
-            // 获取登录后的 Cookie
-            const cookies = await this.context.cookies();
-            const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-            const cookieDict = Object.fromEntries(cookies.map(c => [c.name, c.value]));
-
-            // if (this.client) {
-            //     await this.client.updateCookies(cookieString, cookieDict);
-            //     logger.info('[xhsService] Cookies successfully updated in xhsClient');
-            // }
-
-            logger.info(`[loginXiaoHongShu] cookies after login: ${cookieString}`);
-
-            // 重点：找 a1
-            const a1Cookie = cookies.find(c => c.name === 'a1');
-            if (a1Cookie) {
-            logger.info(`[loginXiaoHongShu] Found a1: ${a1Cookie.value}`);
-            } else {
-            logger.warn('[loginXiaoHongShu] a1 NOT FOUND in cookies!');
-            }
-                    
-
-            logger.info(`[xhsService] 登录成功，Cookie = ${cookieString}`);
-
-            // 初始化 xhsClient
-            this.client = new xhsClient({
-                headers: {
-                    'User-Agent': 'Mozilla/5.0',
-                    'Cookie': cookieString,
-                    'Content-Type': 'application/json',
-                },
-                playwrightPage: this.page,
-                cookieDict: cookieDict
-            });
-        } catch (error: any) {
-            logger.info("Got an error here");
-            logger.error(`[xhsService] 登录失败: ${error.message}`);
-            throw error;
+                // 重点：找 a1
+                const a1Cookie = cookies.find(c => c.name === 'a1');
+                if (a1Cookie) {
+                logger.info(`[loginXiaoHongShu] Found a1: ${a1Cookie.value}`);
+                } else {
+                logger.warn('[loginXiaoHongShu] a1 NOT FOUND in cookies!');
+                }
+                }else{
+                    logger.info('[xhsLogin]: context is null')
+                }
+            } catch (error: any) {
+            logger.error(`[loginXiaoHongShu] Error: ${error.message}`);
         }
-        logger.info('Succesfully create client');
-        // await this.client.updateCookies(cookieStr,)
     }
 
     /**
@@ -194,7 +262,7 @@ export class xhsService {
         }
 
         logger.error('Try to get all notes by creator');
-        const allNotes: any[] = await this.client.getAllNotesByCreator(creatorId, crawlInterval, async (notes) => {
+        const allNotes: any[] = await this.client.getAllNotesByCreator(creatorId, crawlInterval, async (notes: any) => {
             if (callback) {
                 await callback(notes);
             }
@@ -278,7 +346,7 @@ export class xhsService {
 
         const detailResults = await Promise.all(detailTasks);
         // 过滤掉获取详情失败的
-        const validDetails = detailResults.filter(d => d !== null);
+        const validDetails = detailResults.filter((d: null) => d !== null);
 
         logger.info(`[xhsService.getCreatorAndNotes] 成功获取到笔记详情数量: ${validDetails.length}`);
 
