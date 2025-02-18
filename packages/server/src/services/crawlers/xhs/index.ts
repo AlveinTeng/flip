@@ -6,7 +6,6 @@ import { Browser, BrowserContext, Page, chromium } from 'playwright';
 import { logger } from '../../../utils/crawlers/logger.js';
 import { xhsLogin } from '../../../crawlers/mediaPlatforms/xhs/login.js'; 
 import { xhsClient } from '../../../crawlers/mediaPlatforms/xhs/client.js'; 
-import { DataFetchError, IPBlockError } from '../../../exceptions/crawler.js';
 import { fileURLToPath } from 'url';
 
 import { convertCookies } from '../../../utils/crawlers/crawler_util.js';
@@ -255,7 +254,7 @@ export class xhsService {
     ): Promise<any[]> {
         // await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
 
-        logger.error('getAllNotesByCreatorId: ensured Login')
+        logger.error('getAllNotesByCreatorId: ensured Login');
 
         if (!this.client) {
             throw new Error('xhsClient 未初始化');

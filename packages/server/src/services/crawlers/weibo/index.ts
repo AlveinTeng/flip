@@ -1,4 +1,5 @@
 import { Browser, BrowserContext, Page, chromium } from 'playwright';
+// import NodeCache from 'node-cache';
 import { logger } from '../../../utils/crawlers/logger.js';
 import { WeiboLogin } from '../../../crawlers/mediaPlatforms/weibo/login.js';
 import { WeiboClient } from '../../../crawlers/mediaPlatforms/weibo/client.js';
@@ -8,6 +9,36 @@ export class WeiboService {
   private context: BrowserContext | null = null;
   private page: Page | null = null;
   private client: WeiboClient | null = null;
+  private lfidContainerId: any | null = null; 
+
+  private async initializeClient(): Promise<void> {
+    if (this.client) return; // If already initialized, skip
+
+    try {
+        this.browser = await chromium.launch({ headless: false });
+        this.context = await this.browser.newContext();
+        this.page = await this.context.newPage();
+
+        const cookies = await this.context.cookies();
+        const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+
+        this.client = new WeiboClient({
+            headers: {
+                'User-Agent': 'Mozilla/5.0',
+                'Cookie': cookieString,
+                'Content-Type': 'application/json',
+            },
+            playwrightPage: this.page,
+            cookieDict: Object.fromEntries(cookies.map(c => [c.name, c.value])),
+        });
+
+        console.log('[WeiboService] Client initialized successfully.');
+    } catch (error) {
+        const errorMessage = (error as Error).message;
+        console.error(`[WeiboService] Failed to initialize client: ${errorMessage}`);
+        throw error;
+    }
+}
 
   public async loginWeibo(
     loginType: 'qrcode' | 'phone' | 'cookie',
@@ -19,7 +50,7 @@ export class WeiboService {
         await this.close();
       }
 
-      this.browser = await chromium.launch({ headless: false });
+      this.browser = await chromium.launch({ headless: true });
       this.context = await this.browser.newContext();
       this.page = await this.context.newPage();
 
@@ -100,62 +131,48 @@ export class WeiboService {
   }
 
   public async getCreatorInfoByID(
-    creatorID: string,
-    autoLogin = true,
-    loginType?: 'qrcode' | 'phone' | 'cookie',
-    cookieStr?: string
+    creatorId: string,
   ): Promise<any> {
-    await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
+
+    if(!this.client){
+      await this.initializeClient();
+    }
+    
 
     if (!this.client) {
       throw new Error('WeiboClient 未初始化');
     }
-    return this.client.getCreatorInfoById(creatorID);
+    const creatorInfo = await this.client.getCreatorInfoById(creatorId);
+
+    if (!creatorInfo) {
+      throw new Error('Failed to get creatorInfo');
+    }
+
+    this.lfidContainerId = creatorInfo.lfid_container_id;
+
+    return creatorInfo;
   }
 
   public async getAllNotesByCreatorId(
       creatorId: string,
       crawlInterval: number = 1.0,
       callback?: (notes: any[]) => Promise<void>,
-      autoLogin = true,
-      loginType?: 'qrcode' | 'phone' | 'cookie',
-      cookieStr?: string,
       maxCount: number | null = null
   ): Promise<any[]> {
     if (!this.client) {
-      logger.info('[WeiBoService]: ')
-      try{
-        this.browser = await chromium.launch({ headless: false });
-        this.context = await this.browser.newContext();
-        this.page = await this.context.newPage();
-
-        const cookies = await this.context.cookies();
-        const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-
-        this.client = new WeiboClient({
-          headers: {
-            'User-Agent': 'Mozilla/5.0',
-            'Cookie': cookieString,
-            'Content-Type': 'application/json',
-          },
-          playwrightPage: this.page,
-          cookieDict: Object.fromEntries(cookies.map(c => [c.name, c.value])),
-        });
-      } catch (error) {
-        logger.error(`[WeiboService] init client failed: ${(error as Error).message}`);
-        throw error;
-      }
+      logger.info('[WeiboService]: Init Client when crawl notes');
+      await this.initializeClient();
     }
-      // await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
       
       if (!this.client) {
           throw new Error('WeiboClient 未初始化');
       }
 
-      const creatorInfo = await this.client.getCreatorInfoById(creatorId);
-      const lfidContainerId = creatorInfo.lfid_container_id;
+      let lfidContainerId = this.lfidContainerId;
       if (!lfidContainerId) {
-          throw new Error('获取用户容器信息失败, 无法继续');
+          logger.info('lfidContainerId is null, obtain it again');
+          let creatorInfo = await this.getCreatorInfoByID(creatorId);
+          lfidContainerId = creatorInfo.lfid_container_id;
       }
 
       const result: any[] = [];

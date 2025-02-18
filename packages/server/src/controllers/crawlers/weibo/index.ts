@@ -64,7 +64,7 @@ export async function getWeiboDetail(req: Request, res: Response): Promise<void>
  * 获取用户信息
  */
 export async function getCreatorInfo(req: Request, res: Response): Promise<void> {
-  const { creatorId, autoLogin, loginType, cookieStr } = req.body;
+  const { creatorId } = req.body;
 
   if (!creatorId) {
     res.status(400).json({ error: '用户 ID (creatorId) 是必填的' });
@@ -72,8 +72,8 @@ export async function getCreatorInfo(req: Request, res: Response): Promise<void>
   }
 
   try {
-    const creatorInfo = await weiboService.getCreatorInfoByID(creatorId, autoLogin, loginType, cookieStr);
-    res.json({ data: creatorInfo });
+    const creatorInfo = await weiboService.getCreatorInfoByID(creatorId);
+    res.json({ creatorinfo: creatorInfo });
   } catch (error) {
     res.status(500).json({ error: `获取用户信息失败: ${(error as Error).message}` });
   }
@@ -83,7 +83,7 @@ export async function getCreatorInfo(req: Request, res: Response): Promise<void>
  * 获取用户的所有帖子
  */
 export async function getAllNotes(req: Request, res: Response): Promise<void> {
-  const { creatorId, crawlInterval, autoLogin, loginType, cookieStr, maxCount } = req.body;
+  const { creatorId, crawlInterval,  maxCount } = req.body;
 
   if (!creatorId) {
     res.status(400).json({ error: '用户 ID (creatorId) 是必填的' });
@@ -95,16 +95,20 @@ export async function getAllNotes(req: Request, res: Response): Promise<void> {
       creatorId,
       crawlInterval || 1.0,
       undefined,
-      autoLogin,
-      loginType,
-      cookieStr,
       maxCount
     );
     res.json({ data: notes });
   } catch (error) {
     res.status(500).json({ error: `获取用户帖子失败: ${(error as Error).message}` });
   }
+  // try{
+  //   const creatorInfo = await weiboService.getCreatorInfoByID(creatorId);
+  //   res.json({creatorinfo: creatorInfo});
+  // } catch (error) {
+  //   res.status(500).json({ error: `获取用户详情失败: ${(error as Error).message}` });
+  // }
 }
+
 
 /**
  * 关闭浏览器

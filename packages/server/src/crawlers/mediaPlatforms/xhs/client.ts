@@ -105,7 +105,7 @@ export class xhsClient {
   
     // 3. 检查 b1
     if (!localStorage['b1']) {
-      logger.warn(`[preHeaders] b1 is not found in localStorage!`);
+      logger.warn('[preHeaders] b1 is not found in localStorage!');
     }
   
     // 4. 调用 window._webmsxyw
@@ -286,7 +286,7 @@ export class xhsClient {
     // const bodyStr = JSON.stringify(data); // Python 里还有 ensure_ascii / separators 等，你可视需求而定
     const bodyStr = JSON.stringify(data, (key, value) => {
       // 可定制 JSON.stringify 的序列化行为
-      return typeof value === "string" ? value : value;
+      return typeof value === 'string' ? value : value;
     });
     logger.info(`[Post]: BodyString is ${bodyStr}`);
     return this.request('POST', `${this.host}${uri}`, {

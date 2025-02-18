@@ -47,13 +47,13 @@ export class xhsLogin implements BaseLogin {
         const currentCookies = await this.browserContext.cookies();
         const [cookieStr, cookieDict] = convertCookies(currentCookies);
 
-        if ("web_session" in cookieDict && cookieDict['web_session'] !== noLoggedInSession) {
+        if ('web_session' in cookieDict && cookieDict['web_session'] !== noLoggedInSession) {
             return true;
         }
 
         const pageContent = await this.contextPage.content();
-        if (pageContent.includes("请通过验证")) {
-            logger.info("[XiaoHongShuLogin.check_login_state] 登录过程中出现验证码，请手动验证");
+        if (pageContent.includes('请通过验证')) {
+            logger.info('[XiaoHongShuLogin.check_login_state] 登录过程中出现验证码，请手动验证');
         }
 
         return false;
@@ -84,12 +84,12 @@ export class xhsLogin implements BaseLogin {
         let base64QrcodeImg = await findLoginQrcode(this.contextPage, qrcodeImgSelector);
 
         if (!base64QrcodeImg) {
-            logger.info("[XiaoHongShuLogin.login_by_qrcode] login failed, have not found qrcode please check ....");
+            logger.info('[XiaoHongShuLogin.login_by_qrcode] login failed, have not found qrcode please check ....');
             // 如果网站没有自动弹出登录对话框，手动点击登录按钮
             await this.contextPage.click("xpath=//*[@id='app']/div[1]/div[2]/div[1]/ul/div[1]/button");
             base64QrcodeImg = await findLoginQrcode(this.contextPage, qrcodeImgSelector);
             if (!base64QrcodeImg) {
-                logger.error("[XiaoHongShuLogin.login_by_qrcode] QR code not found after clicking login button. Exiting...");
+                logger.error('[XiaoHongShuLogin.login_by_qrcode] QR code not found after clicking login button. Exiting...');
                 process.exit(1);
             }
         }
@@ -104,13 +104,13 @@ export class xhsLogin implements BaseLogin {
             logger.error(`[XiaoHongShuLogin.login_by_qrcode] Failed to show QR code: ${error}`);
         });
 
-        logger.info("[XiaoHongShuLogin.login_by_qrcode] Waiting for scan code login, remaining time is 120s");
+        logger.info('[XiaoHongShuLogin.login_by_qrcode] Waiting for scan code login, remaining time is 120s');
 
         try {
             await this.waitForLoginSuccess(noLoggedInSession);
         } catch (error) {
             if (error instanceof RetryError) {
-                logger.error("[XiaoHongShuLogin.login_by_qrcode] Login XiaoHongShu failed by qrcode login method ...");
+                logger.error('[XiaoHongShuLogin.login_by_qrcode] Login XiaoHongShu failed by qrcode login method ...');
                 process.exit(1);
             } else {
                 logger.error(`[XiaoHongShuLogin.login_by_qrcode] Unexpected error during login:${error}`);
@@ -125,7 +125,7 @@ export class xhsLogin implements BaseLogin {
 
     public async loginByMobile(): Promise<void> {
         //TODO
-        logger.info("[XiaoHongShuLogin.login_by_mobile]: Not implemented");
+        logger.info('[XiaoHongShuLogin.login_by_mobile]: Not implemented');
         // logger.info("[XiaoHongShuLogin.login_by_mobile] Begin login XiaoHongShu by mobile ...");
         // await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒
 
@@ -236,7 +236,7 @@ export class xhsLogin implements BaseLogin {
     }
 
     public async loginByCookies(): Promise<void> {
-        logger.info("[XiaoHongShuLogin.login_by_cookies] Begin login XiaoHongShu by cookie ...");
+        logger.info('[XiaoHongShuLogin.login_by_cookies] Begin login XiaoHongShu by cookie ...');
         logger.info(this.cookieStr);
         if (!this.cookieStr || this.cookieStr.trim().length === 0) {
             logger.info('[XiaoHongShuLogin.login_by_cookies] No cookies provided, skipping cookie login to test guest mode.');
@@ -245,16 +245,16 @@ export class xhsLogin implements BaseLogin {
 
         const cookieDict = convertStrCookieToDict(this.cookieStr);
         const cookiesToAdd = Object.entries(cookieDict)
-            .filter(([key, _]) => key === "web_session") // 仅设置 web_session Cookie
+            .filter(([key, _]) => key === 'web_session') // 仅设置 web_session Cookie
             .map(([key, value]) => ({
                 name: key,
                 value: value,
-                domain: ".xiaohongshu.com",
-                path: "/"
+                domain: '.xiaohongshu.com',
+                path: '/'
             }));
 
         if (cookiesToAdd.length === 0) {
-            logger.warn("[XiaoHongShuLogin.login_by_cookies] No valid cookies to add.");
+            logger.warn('[XiaoHongShuLogin.login_by_cookies] No valid cookies to add.');
             return;
         }
 

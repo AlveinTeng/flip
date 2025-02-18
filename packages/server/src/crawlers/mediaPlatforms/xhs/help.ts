@@ -15,11 +15,11 @@ const CRC32_TABLE: number[] = [
  * Base64 Lookup Table
  */
 const BASE64_LOOKUP: string[] = [
-    "Z", "m", "s", "e", "r", "b", "B", "o", "H", "Q", "t", "N", "P", "+", "w", "O",
-    "c", "z", "a", "/", "L", "p", "n", "g", "G", "8", "y", "J", "q", "4", "2",
-    "K", "W", "Y", "j", "0", "D", "S", "f", "d", "i", "k", "x", "3", "V", "T",
-    "1", "6", "I", "l", "U", "A", "F", "M", "9", "7", "h", "E", "C", "v", "u",
-    "R", "X", "5",
+    'Z', 'm', 's', 'e', 'r', 'b', 'B', 'o', 'H', 'Q', 't', 'N', 'P', '+', 'w', 'O',
+    'c', 'z', 'a', '/', 'L', 'p', 'n', 'g', 'G', '8', 'y', 'J', 'q', '4', '2',
+    'K', 'W', 'Y', 'j', '0', 'D', 'S', 'f', 'd', 'i', 'k', 'x', '3', 'V', 'T',
+    '1', '6', 'I', 'l', 'U', 'A', 'F', 'M', '9', '7', 'h', 'E', 'C', 'v', 'u',
+    'R', 'X', '5',
 ];
 
 /**
@@ -30,15 +30,15 @@ const BASE64_LOOKUP: string[] = [
  * @param x_t - x_t 参数
  * @returns 签名对象
  */
-export function sign(a1: string = "", b1: string = "", x_s: string = "", x_t: string = ""): Record<string, string> {
+export function sign(a1: string = '', b1: string = '', x_s: string = '', x_t: string = ''): Record<string, string> {
     const common: Record<string, any> = {
         s0: 3,  // getPlatformCode
-        s1: "",
-        x0: "1",  // localStorage.getItem("b1b1")
-        x1: "3.7.8-2",  // version
-        x2: "Mac OS",
-        x3: "xhs-pc-web",
-        x4: "4.27.2",
+        s1: '',
+        x0: '1',  // localStorage.getItem("b1b1")
+        x1: '3.7.8-2',  // version
+        x2: 'Mac OS',
+        x3: 'xhs-pc-web',
+        x4: '4.27.2',
         x5: a1,  // cookie of a1
         x6: x_t,
         x7: x_s,
@@ -52,10 +52,10 @@ export function sign(a1: string = "", b1: string = "", x_s: string = "", x_t: st
     const x_b3_traceid = get_b3_trace_id();
 
     return {
-        "x-s": x_s,
-        "x-t": x_t,
-        "x-s-common": x_s_common,
-        "x-b3-traceid": x_b3_traceid
+        'x-s': x_s,
+        'x-t': x_t,
+        'x-s-common': x_s_common,
+        'x-b3-traceid': x_b3_traceid
     };
 }
 
@@ -64,8 +64,8 @@ export function sign(a1: string = "", b1: string = "", x_s: string = "", x_t: st
  * @returns 随机生成的 b3_trace_id
  */
 export function get_b3_trace_id(): string {
-    const chars = "abcdef0123456789";
-    let traceId = "";
+    const chars = 'abcdef0123456789';
+    let traceId = '';
     for (let i = 0; i < 16; i++) {
         traceId += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -235,10 +235,10 @@ export function get_search_id(): string {
  * Array of image CDNs.
  */
 const img_cdns: string[] = [
-    "https://sns-img-qc.xhscdn.com",
-    "https://sns-img-hw.xhscdn.com",
-    "https://sns-img-bd.xhscdn.com",
-    "https://sns-img-qn.xhscdn.com",
+    'https://sns-img-qc.xhscdn.com',
+    'https://sns-img-hw.xhscdn.com',
+    'https://sns-img-bd.xhscdn.com',
+    'https://sns-img-qn.xhscdn.com',
 ];
 
 /**
@@ -249,7 +249,7 @@ const img_cdns: string[] = [
  */
 export function get_img_url_by_trace_id(
     trace_id: string,
-    format_type: string = "png"
+    format_type: string = 'png'
 ): string {
     const cdn = img_cdns[Math.floor(Math.random() * img_cdns.length)];
     return `${cdn}/${trace_id}?imageView2/format/${format_type}`;
@@ -263,7 +263,7 @@ export function get_img_url_by_trace_id(
  */
 export function get_img_urls_by_trace_id(
     trace_id: string,
-    format_type: string = "png"
+    format_type: string = 'png'
 ): string[] {
     return img_cdns.map(
         (cdn) => `${cdn}/${trace_id}?imageView2/format/${format_type}`
@@ -279,7 +279,7 @@ export function get_trace_id(img_url: string): string {
     // Handles URLs with and without '/spectrum/'
     const parts = img_url.split('/');
     const lastPart = parts.pop() || '';
-    return img_url.includes("spectrum") ? `spectrum/${lastPart}` : lastPart;
+    return img_url.includes('spectrum') ? `spectrum/${lastPart}` : lastPart;
 }
 
 /**

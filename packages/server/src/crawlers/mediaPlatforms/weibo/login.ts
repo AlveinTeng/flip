@@ -39,7 +39,7 @@ export class WeiboLogin implements BaseLogin {
 
     private async checkLoginState(noLoggedInSession?: string): Promise<boolean> {
         const currentCookie = await this.browserContext.cookies();
-        const [cookieDict] = convertCookies(currentCookie);
+        const [cookieStr, cookieDict]: [string, { [key: string]: string }] = convertCookies(currentCookie);
 
         if (cookieDict['SSOLoginState']) {
             return true;
@@ -85,7 +85,7 @@ export class WeiboLogin implements BaseLogin {
         logger.info('[WeiboLogin.login_by_qrcode] Waiting for scan code login...');
 
         const currentCookie = await this.browserContext.cookies();
-        const [cookieDict] = convertCookies(currentCookie);
+        const [coonkieStr, cookieDict] = convertCookies(currentCookie);
         const noLoggedInSession = cookieDict['WBPSESS'];
 
         try {
