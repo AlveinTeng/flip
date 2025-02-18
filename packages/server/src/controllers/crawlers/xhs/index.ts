@@ -4,6 +4,30 @@ import { logger } from '../../../utils/crawlers/logger.js';
 
 const XiaoHongshuService = new xhsService();
 
+export async function start(req: Request, res: Response): Promise<void> {
+  const {loginType, cookieStr, task } = req.body;
+
+  if (!loginType) {
+    res.status(400).json({ error: '登录方式 (loginType) 是必填的' });
+    return;
+  }
+
+  // if (!task) {
+  //   res.status(400).json({ error: '任务类型 (task) 是必填的' });
+  //   return;
+  // }
+
+
+  try {
+    await XiaoHongshuService.start(loginType, cookieStr, task);
+    res.json({ message: '启动成功' });
+  } catch (error) {
+    res.status(500).json({ error: `启动失败: ${(error as Error).message}` });
+  }
+
+
+}
+
 /**
  * 手动登录
  */

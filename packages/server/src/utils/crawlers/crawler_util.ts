@@ -218,20 +218,36 @@ export function convertCookies(cookies: Cookie[] | null | undefined): [string, R
  */
 export function convertStrCookieToDict(cookieStr: string): Record<string, string> {
     const cookieDict: Record<string, string> = {};
+
     if (!cookieStr) {
         return cookieDict;
     }
 
-    const cookies = cookieStr.split(';');
-    for (const cookie of cookies) {
-        const [k, v] = cookie.trim().split('=');
-        if (k && v) {
-            cookieDict[k] = v;
+    // Split cookies by ';' and process each one
+    for (const cookie of cookieStr.split(';')) {
+        const trimmedCookie = cookie.trim();
+        if (!trimmedCookie) {
+            continue;
         }
+
+        const cookieList = trimmedCookie.split('=');
+        if (cookieList.length !== 2) {
+            continue;
+        }
+
+        let cookieValue = cookieList[1];
+
+        // Ensure the value is a string (if it's an array, join it)
+        if (Array.isArray(cookieValue)) {
+            cookieValue = cookieValue.join('');
+        }
+
+        cookieDict[cookieList[0]] = cookieValue;
     }
 
     return cookieDict;
 }
+
 
 /**
  * 匹配交互信息数量

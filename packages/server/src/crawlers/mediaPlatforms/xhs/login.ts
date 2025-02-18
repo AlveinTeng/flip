@@ -236,36 +236,24 @@ export class xhsLogin implements BaseLogin {
     }
 
     public async loginByCookies(): Promise<void> {
-        logger.info('[XiaoHongShuLogin.login_by_cookies] Begin login XiaoHongShu by cookie ...');
-        logger.info(this.cookieStr);
-        if (!this.cookieStr || this.cookieStr.trim().length === 0) {
-            logger.info('[XiaoHongShuLogin.login_by_cookies] No cookies provided, skipping cookie login to test guest mode.');
-            return;
-        }
+        logger.info("[XiaoHongShuLogin.loginByCookies] Begin login xiaohongshu by cookie ...");
 
+        // Convert the cookie string to a dictionary
         const cookieDict = convertStrCookieToDict(this.cookieStr);
-        const cookiesToAdd = Object.entries(cookieDict)
-            .filter(([key, _]) => key === 'web_session') // 仅设置 web_session Cookie
-            .map(([key, value]) => ({
+
+        for (const [key, value] of Object.entries(cookieDict)) {
+            // Only set the "web_session" cookie attribute
+            if (key !== "web_session") {
+                continue;
+            }
+
+            // Add the web_session cookie to the browser context
+            await this.browserContext.addCookies([{
                 name: key,
-                value: value,
-                domain: '.xiaohongshu.com',
-                path: '/'
-            }));
-
-        if (cookiesToAdd.length === 0) {
-            logger.warn('[XiaoHongShuLogin.login_by_cookies] No valid cookies to add.');
-            return;
+                value: value as string,
+                domain: ".xiaohongshu.com",
+                path: "/"
+            }]);
         }
-
-        await this.browserContext.addCookies(cookiesToAdd);
-        logger.info('[XiaoHongShuLogin.login_by_cookies] Cookies set successfully.');
-
-        const cookies = await this.browserContext.cookies();
-        // console.log(cookies);  // 看里面有没有 a1
-
-        // const b1Val = await this.contextPage.evaluate(() => localStorage.getItem('b1'));
-        // console.log('b1Val in TS:', b1Val);
-
     }
 }

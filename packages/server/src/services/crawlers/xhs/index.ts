@@ -42,7 +42,6 @@ export class xhsService {
     private async launchBrowser(chromium: any, proxy: any, userAgent: string, headless: boolean) {
         const browserContext = await chromium.launchPersistentContext('', {
             headless,
-            proxy,
             userAgent,
         });
         return browserContext;
@@ -120,21 +119,48 @@ export class xhsService {
             await loginObj.begin();
             await this.client.updateCookies(this.context);
         }
+        //Check whether a1 is in cookies
+        try {
+            if(this.context) {
+
+                const cookies = await this.context.cookies();
+                const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+                // const cookieDict = Object.fromEntries(cookies.map(c => [c.name, c.value]));
+
+                logger.info(`[loginXiaoHongShu] cookies after login: ${cookieString}`);
+
+                // 重点：找 a1
+                const a1Cookie = cookies.find(c => c.name === 'a1');
+                if (a1Cookie) {
+                logger.info(`[loginXiaoHongShu] Found a1: ${a1Cookie.value}`);
+                } else {
+                logger.warn('[loginXiaoHongShu] a1 NOT FOUND in cookies!');
+                }
+                }else{
+                    logger.info('[xhsLogin]: context is null')
+                }
+            } catch (error: any) {
+            logger.error(`[loginXiaoHongShu] Error: ${error.message}`);
+        }
+
+        
 
         // CrawlerType.set(config.CRAWLER_TYPE);
+        if(task) {
+            switch (task) {
+                case 'login':
+                    await this.loginXiaoHongShu(loginType, cookieStr);
+                    break;
+                case 'detail':
+                    // await this.getSpecifiedNotes();
+                    break;
+                case 'creator':
+                    // await this.getCreatorsAndNotes();
+                    break;
+                default:
+                    break;
+            }
 
-        switch (task) {
-            case 'login':
-                await this.loginXiaoHongShu(loginType, cookieStr);
-                break;
-            case 'detail':
-                // await this.getSpecifiedNotes();
-                break;
-            case 'creator':
-                // await this.getCreatorsAndNotes();
-                break;
-            default:
-                break;
         }
 
         logger.info("[XiaoHongShuCrawler.start] Xhs Crawler finished ...");

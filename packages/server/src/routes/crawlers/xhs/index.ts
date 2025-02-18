@@ -1,7 +1,7 @@
 // src/routes/WeiboRoutes.ts
 
 import { Router } from 'express';
-import { login, getAllNotes } from '../../../controllers/crawlers/xhs/index.js';
+import { login, getAllNotes, start } from '../../../controllers/crawlers/xhs/index.js';
 
 const router = Router();
 
@@ -9,6 +9,8 @@ const router = Router();
 router.post('/login', login);
 
 router.post('/crawl', getAllNotes);
+
+router.post('/start', start);
 
 // Crawler: Get all notes
 // router.post('/crawler', getAllNotes);
