@@ -5,7 +5,7 @@ import { logger } from '../../../utils/crawlers/logger.js';
 const XiaoHongshuService = new xhsService();
 
 export async function start(req: Request, res: Response): Promise<void> {
-  const {loginType, cookieStr, task } = req.body;
+  const {loginType, cookieStr, task, creatorId } = req.body;
 
   if (!loginType) {
     res.status(400).json({ error: '登录方式 (loginType) 是必填的' });
@@ -19,11 +19,18 @@ export async function start(req: Request, res: Response): Promise<void> {
 
 
   try {
-    await XiaoHongshuService.start(loginType, cookieStr, task);
-    res.json({ message: '启动成功' });
-  } catch (error) {
-    res.status(500).json({ error: `启动失败: ${(error as Error).message}` });
-  }
+    const creatorData = await XiaoHongshuService.start(loginType, cookieStr, task, creatorId);
+
+    if (task === 'creator') {
+        // 返回爬取的 creator 信息
+        res.json({ message: '启动成功', creator: creatorData });
+    } else {
+        res.json({ message: '启动成功' });
+    }
+
+    } catch (error) {
+        res.status(500).json({ error: `启动失败: ${(error as Error).message}` });
+    }
 
 
 }

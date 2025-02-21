@@ -70,7 +70,7 @@ export class xhsService {
         return xhsClientObj;
     }
 
-    public async start(loginType: 'qrcode' | 'phone' | 'cookie', cookieStr: string = '', task: string): Promise<void> {
+    public async start(loginType: 'qrcode' | 'phone' | 'cookie', cookieStr: string = '', task: string, creatorID: string,): Promise<void> {
         let playwrightProxyFormat: string | null = null;
         let httpxProxyFormat: string | null = null;
 
@@ -146,6 +146,7 @@ export class xhsService {
         
 
         // CrawlerType.set(config.CRAWLER_TYPE);
+        let creatorData = null;
         if(task) {
             switch (task) {
                 case 'login':
@@ -155,8 +156,10 @@ export class xhsService {
                     // await this.getSpecifiedNotes();
                     break;
                 case 'creator':
-                    // await this.getCreatorsAndNotes();
-                    break;
+                    logger.info("creator!");
+                    creatorData = await this.getCreatorInfoByID(creatorID);
+                    return creatorData;
+                    
                 default:
                     break;
             }
@@ -258,12 +261,12 @@ export class xhsService {
         loginType?: 'qrcode' | 'phone' | 'cookie',
         cookieStr?: string
     ): Promise<any> {
-        await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
+        // await this.ensureLoggedIn(autoLogin, loginType, cookieStr);
 
         if (!this.client) {
             throw new Error('xhsClient 未初始化');
         }
-        return this.client.getCreatorInfo(creatorID);
+        return this.client.getCreatorInfo(creatorID, this.page);
     }
 
     /**

@@ -1,6 +1,6 @@
 // src/crawlers/mediaPlatforms/xhs/client.ts
 
-import fetch, { RequestInit } from 'node-fetch';
+import fetch, { RequestInit, Response } from 'node-fetch';
 import { Page } from 'playwright';
 import { logger } from '../../../utils/crawlers/logger.js';
 import { DataFetchError, IPBlockError } from '../../../exceptions/crawler.js';
@@ -8,6 +8,7 @@ import {sign} from './help.js'
 import {SearchNoteType} from './field.js'
 import { BrowserContext } from 'playwright';
 import { convertCookies } from '../../../utils/crawlers/crawler_util.js';
+import { isGeneratorObject } from 'util/types';
 // import {encodeUtf8AndBase64} from './help.js'
 // 这里可以和 Python 保持一致
 const IP_ERROR_CODE = 300012;
@@ -28,6 +29,7 @@ export class xhsClient {
   private timeout: number;
 
   // 用于识别 IP Block / Note Abnormal 等错误的字符串/错误码
+  private IP_ERROR_CODE = 300012;
   private IP_ERROR_STR = '网络连接异常，请检查网络设置或重启试试';
   private NOTE_ABNORMAL_STR = '笔记状态异常，请稍后查看';
   private NOTE_ABNORMAL_CODE = -510001;
@@ -98,6 +100,16 @@ export class xhsClient {
     // logger.info(`[preHeaders] cookieDict['a1']: ${this.cookieDict['a1']}`);
   
     // 2. 获取 localStorage
+
+    const encryptParams = await this.playwrightPage.evaluate(([u, d]) => {
+      //@ts-ignore
+      if (typeof (window as any)._webmsxyw !== 'function') {
+        throw new Error('window._webmsxyw is not defined or is not a function');
+      }
+      //@ts-ignore
+      return (window as any)._webmsxyw(u, d);
+    }, [url, data]);
+
     const localStorage: Record<string, string> = await this.playwrightPage.evaluate(() => {
       return Object.fromEntries(Object.entries(localStorage));
     });
@@ -109,14 +121,7 @@ export class xhsClient {
     }
   
     // 4. 调用 window._webmsxyw
-    const encryptParams = await this.playwrightPage.evaluate(([u, d]) => {
-      //@ts-ignore
-      if (typeof (window as any)._webmsxyw !== 'function') {
-        throw new Error('window._webmsxyw is not defined or is not a function');
-      }
-      //@ts-ignore
-      return (window as any)._webmsxyw(u, d);
-    }, [url, data]);
+    
   
     // logger.info(`[preHeaders] encryptParams: ${JSON.stringify(encryptParams)}`);
   
@@ -127,22 +132,22 @@ export class xhsClient {
       encryptParams['X-s'] ?? '',
       String(encryptParams['X-t'] ?? ''),
     );
-    // const signs = sign(
-    //   '1944513ecackf9el2k24gi2pfs318ztgnol4ztwwf30000180555',
-    //   'I38rHdgsjopgIvesdVwgIC+oIELmBZ5e3VwXLgFTIxS3bqwErFeexd0ekncAzMFYnqthIhJeSnMDKutRI3KsYorWHPtGrbV0P9WfIi/eWc6eYqtyQApPI37ekmR1QL+5Ii3sdnoeSfGYHqwl2qt5B0DoIx+PGDi/sVtkIxdsxuwb4qtkIhuaIE3e3LV0I3VTIC7e0utl2ADmsLveDSKsSPw5IEvsiVtJOqw8BuwfPpdeTFWOIx4TIiu6ZPwrPut5IvlaLbgs3qtxIxes1VwHIkumIkIyejgsY/WTge7eSqte/D7sDcpipedeYrDtIC6eDVw2IENsSqtlnlSuNjVtIx5e1qt3bmAeVn8LIESGIhEe+AFDI3EPKI8BIiW7ZPwFIvGj4sesYINsxVwSIC7efnJe0fEqIiAe6WrS8qwUIE7s1f0s6WAeiVtwpjNeYuw7Ivl8ze0efVwEg9JsWVw8IxI2I38isqwZgVtPzg8QwcNejd/eiqwoIhAsS/AskFRYIk/s0MvskdE0IhgsiVwDIhGdQqwJ8ut9I33e3PtVIiNsiqwlIh/eDqtAHPwPmVwDI3MdIv4pH9ztrY3s3qwEIiT+IiesfPwoeWccpj3sDskuIkGyGuwbmPwhICdekVtUQpdeipJsTrELIhvs6m3ejPtsoI==',
-    //   encryptParams['X-s'] ?? '',
-    //   String(encryptParams['X-t'] ?? ''),
-    // );
-    // logger.info(`[preHeaders] signs: ${JSON.stringify(signs)}`);
   
-    return {
-      ...this.headers,
-      'X-S': signs['x-s'],
-      'X-T': signs['x-t'],
-      'x-S-Common': signs['x-s-common'],
-      'X-B3-Traceid': signs['x-b3-traceid'],
-    };
+    const headers = {
+            "X-S": signs["x-s"],
+            "X-T": signs["x-t"],
+            "x-S-Common": signs["x-s-common"],
+            "X-B3-Traceid": signs["x-b3-traceid"]
+        };
+
+        // 6. Update the headers object
+        this.headers = { ...this.headers, ...headers };
+
+        // Return the updated headers
+        return this.headers;
   }
+
+  
   
 
   /**
@@ -205,17 +210,32 @@ export class xhsClient {
   //   }
   // }
 
+  // 自定义错误处理
+  // class IPBlockError extends Error {
+  //   constructor(message: string) {
+  //     super(message);
+  //     this.name = "IPBlockError";
+  //   }
+  // }
+
+  // class DataFetchError extends Error {
+  //   constructor(message: string) {
+  //     super(message);
+  //     this.name = "DataFetchError";
+  //   }
+  // }
+
   private async request<T = any>(
-    method: 'GET'|'POST',
+    method: 'GET' | 'POST',
     url: string,
     options: {
       body?: any;
       headers?: Record<string, string>;
-      returnResponse?: boolean; // 用来决定是否返回原始响应文本
+      returnResponse?: boolean; // 控制是否返回原始响应文本
     } = {}
-  ): Promise<T> {
-    const { body, headers, returnResponse = false } = options;
-  
+  ): Promise<T | string> {
+    const { body, headers, returnResponse = true} = options;
+
     const requestOptions: RequestInit = {
       method,
       headers: {
@@ -223,52 +243,56 @@ export class xhsClient {
       },
       body: method === 'POST' && body ? body : undefined,
     };
-  
+
     const resp = await fetch(url, requestOptions);
-  
-    // Check for common HTTP error statuses
+
+    // HTTP 错误处理
     if (!resp.ok) {
       const text = await resp.text();
       throw new Error(`HTTP Error: ${resp.status} - ${text.slice(0, 100)}...`);
     }
-  
+
     const contentType = resp.headers.get('Content-Type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await resp.text();
-      logger.error(`[xhsClient.request] Unexpected content type: ${contentType}`);
-      throw new Error(`Expected JSON, but received: ${contentType}`);
+    if(!contentType) {
+      logger.warn("No contentType")
     }
-  
+
+    logger.info(`ConterntType is: ${contentType}`);
+    // if (!contentType || !contentType.includes('application/json')) {
+    //   const text = await resp.text();
+    //   console.error(`[xhsClient.request] Unexpected content type: ${contentType}`);
+    //   throw new Error(`Expected JSON, but received: ${contentType}`);
+    // }
+
     const text = await resp.text();
+    // logger.info(`text is ${text}`);
     if (returnResponse) {
-      return text as any;
+      logger.info('request: return response');
+      return text;
     }
-  
+
     let data;
     try {
       data = JSON.parse(text);
     } catch (e) {
-      logger.error(`[xhsClient.request] JSON.parse error: ${e}`);
+      console.error(`[xhsClient.request] JSON.parse error: ${e}`);
       if (text.startsWith('<html>')) {
         throw new Error('Received HTML response, expected JSON');
       }
       throw new Error(`JSON parse failed: ${text.slice(0, 100)}...`);
     }
-  
+
     if (data.success) {
       return data.data || data.success;
-    } else if (data.code === IP_ERROR_CODE) {
+    } else if (data.code === this.IP_ERROR_CODE) {
       throw new IPBlockError(this.IP_ERROR_STR);
     } else {
       throw new DataFetchError(data.msg || 'DataFetchError');
     }
   }
-  
 
-  /**
-   * 发起 GET 请求（自带签名）
-   */
-  private async get(uri: string, params?: Record<string, any>): Promise<any> {
+  // GET 请求
+  async get(uri: string, params?: Record<string, any>): Promise<any> {
     let finalUri = uri;
     if (params) {
       const query = new URLSearchParams(params).toString();
@@ -278,17 +302,13 @@ export class xhsClient {
     return this.request('GET', `${this.host}${finalUri}`, { headers: signedHeaders });
   }
 
-  /**
-   * 发起 POST 请求（自带签名）
-   */
-  private async post(uri: string, data: any, extra?: { returnResponse?: boolean }): Promise<any> {
+  // POST 请求
+  async post(uri: string, data: any, extra?: { returnResponse?: boolean }): Promise<any> {
     const signedHeaders = await this.preHeaders(uri, data);
-    // const bodyStr = JSON.stringify(data); // Python 里还有 ensure_ascii / separators 等，你可视需求而定
     const bodyStr = JSON.stringify(data, (key, value) => {
-      // 可定制 JSON.stringify 的序列化行为
       return typeof value === 'string' ? value : value;
     });
-    logger.info(`[Post]: BodyString is ${bodyStr}`);
+    console.info(`[Post]: BodyString is ${bodyStr}`);
     return this.request('POST', `${this.host}${uri}`, {
       headers: signedHeaders,
       body: bodyStr,
@@ -442,23 +462,32 @@ export class xhsClient {
   /**
    * 获取创作者信息（解析 HTML）
    */
-  public async getCreatorInfo(userId: string): Promise<any> {
+  public async getCreatorInfo(userId: string, page: any): Promise<any> {
     const url = `${this.domain}/user/profile/${userId}`;
-    const html = await this.request<string>('GET', url, {
-      headers: this.headers,
-      returnResponse: true,
+    logger.info(`[xhsClient.getCreatorInfo]: url is ${url}`);
+
+    // 使用 Playwright/Puppeteer 直接在页面中获取数据
+    await page.goto(url, { waitUntil: 'domcontentloaded' }); // 等待页面加载完成
+
+    // 获取 window.__INITIAL_STATE__ 中的数据
+    const creatorInfo = await page.evaluate(() => {
+      //@ts-ignore
+        if (typeof (window as any).__INITIAL_STATE__) {
+            //@ts-ignore
+            return window.__INITIAL_STATE__.user?.userPageData ?? null;  // 如果没有则返回 null
+        }
+        return null;
     });
-    const match = html.match(/<script>window.__INITIAL_STATE__=(.+?)<\/script>/);
-    if (!match) return {};
-    const rawJson = match[1].replace(':undefined', ':null');
-    try {
-      const info = JSON.parse(rawJson);
-      return info?.user?.userPageData ?? {};
-    } catch (e) {
-      logger.error(`[xhsClient.getCreatorInfo] parse JSON failed: ${e}`);
-      return {};
+
+    if (creatorInfo) {
+        logger.info(`[xhsClient.getCreatorInfo]: Found creator info for userId ${userId}`);
+        return creatorInfo;
+    } else {
+        logger.warn(`[xhsClient.getCreatorInfo]: No creator info found for userId ${userId}`);
+        return {};
     }
-  }
+}
+
 
   /**
    * 获取某个博主的笔记列表(分页)
