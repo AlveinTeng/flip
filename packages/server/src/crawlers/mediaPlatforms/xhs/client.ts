@@ -236,6 +236,8 @@ export class xhsClient {
   ): Promise<T | string> {
     const { body, headers, returnResponse = true} = options;
 
+    logger.info(`[xhsClient.request]: request url is: ${url}`);
+
     const requestOptions: RequestInit = {
       method,
       headers: {
@@ -298,6 +300,7 @@ export class xhsClient {
       const query = new URLSearchParams(params).toString();
       finalUri = uri + '?' + query;
     }
+    console.log(`[xhsClient.get]: finale URI is ${finalUri}`);
     const signedHeaders = await this.preHeaders(finalUri);
     return this.request('GET', `${this.host}${finalUri}`, { headers: signedHeaders });
   }
@@ -396,7 +399,7 @@ export class xhsClient {
       return res.items[0].note_card;
     }
     logger.error(`[xhsClient.getNoteById] got empty result: ${JSON.stringify(res)}`);
-    return {};
+    return [];
   }
 
   /**
@@ -546,7 +549,10 @@ export class xhsClient {
       // 控制爬取速度
       await new Promise(r => setTimeout(r, crawlInterval * 1000));
     }
-    return result;
+    if(result) {
+      return result;
+    }
+    return [];
   }
 
   /**

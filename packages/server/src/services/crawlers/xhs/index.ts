@@ -70,7 +70,7 @@ export class xhsService {
         return xhsClientObj;
     }
 
-    public async start(loginType: 'qrcode' | 'phone' | 'cookie', cookieStr: string = '', task: string, creatorID: string,): Promise<void> {
+    public async start(loginType: 'qrcode' | 'phone' | 'cookie', cookieStr: string = '', task: string, creatorID: string,): Promise<any> {
         let playwrightProxyFormat: string | null = null;
         let httpxProxyFormat: string | null = null;
 
@@ -159,7 +159,10 @@ export class xhsService {
                     logger.info("creator!");
                     creatorData = await this.getCreatorInfoByID(creatorID);
                     return creatorData;
-                    
+                case 'creatorNotes':
+                    logger.info("Get Creator Notes");
+                    creatorData = await this.getAllNotesByCreatorId(creatorID);
+                    return creatorData;
                 default:
                     break;
             }
