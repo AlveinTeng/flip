@@ -129,7 +129,6 @@ export class xhsService {
 
                 logger.info(`[loginXiaoHongShu] cookies after login: ${cookieString}`);
 
-                // 重点：找 a1
                 const a1Cookie = cookies.find(c => c.name === 'a1');
                 if (a1Cookie) {
                 logger.info(`[loginXiaoHongShu] Found a1: ${a1Cookie.value}`);
@@ -206,7 +205,7 @@ export class xhsService {
     }
 
     /**
-     * 确保已登录，如果未登录且启用自动登录，则执行登录流程
+     Verify the login status
      */
     private async ensureLoggedIn(
         autoLogin: boolean,
@@ -381,8 +380,6 @@ export class xhsService {
 
         logger.info(`[xhsService.getCreatorAndNotes] 成功获取到笔记详情数量: ${validDetails.length}`);
 
-        // 4. 这里可根据需求写入数据库或返回
-        //    例如: await xhs_store.update_xhs_notes(validDetails);
         return validDetails;
     }
 
